@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manhattan Rent Yield - Personal Savings Index</title>
+    <title>Manhattan Affordable Finder</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
@@ -93,6 +93,7 @@
             font-size: 22px;
         }
         .stat-value.gold { color: var(--yield-gold); }
+        .stat-value.white { color: #fff; }
 
         .main-content {
             display: grid;
@@ -161,7 +162,7 @@
         .rent-row {
             display: flex;
             justify-content: space-between;
-            align-items: center;
+            align-items: flex-start;
             margin-bottom: 12px;
         }
 
@@ -173,6 +174,21 @@
             font-family: 'JetBrains Mono';
             font-weight: 700;
             font-size: 14px;
+        }
+
+        .unit-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 10px;
+            color: var(--accent);
+            background: rgba(190, 242, 100, 0.1);
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin-top: 6px;
+            border: 1px solid rgba(190, 242, 100, 0.2);
+            font-weight: 700;
+            text-transform: uppercase;
         }
 
         .saving-badge {
@@ -231,10 +247,14 @@
     <header class="header">
         <div class="brand">
             <i class="fa-solid fa-wallet"></i>
-            RENT YIELD INDEX
+            AFFORDABLE FINDER
         </div>
         
         <div class="stats-container">
+            <div class="stat-item">
+                <div class="stat-label">Total Available Units</div>
+                <div class="stat-value white" id="total-units-val">0</div>
+            </div>
             <div class="stat-item">
                 <div class="stat-label">Avg. Personal Savings</div>
                 <div class="stat-value" id="avg-savings-val">$0 /yr</div>
@@ -255,10 +275,15 @@
                 </div>
                 <select id="hood-filter">
                     <option value="all">Compare All Manhattan</option>
+                    <option value="washington_heights">Washington Heights / Inwood</option>
+                    <option value="harlem">Harlem / Morningside Heights</option>
                     <option value="uws">Upper West Side</option>
                     <option value="ues">Upper East Side</option>
-                    <option value="chelsea">Chelsea / Hudson Yards</option>
                     <option value="midtown">Midtown / Hell's Kitchen</option>
+                    <option value="chelsea">Chelsea / Hudson Yards</option>
+                    <option value="gramercy">Gramercy / Flatiron</option>
+                    <option value="village">Greenwich Village / SoHo</option>
+                    <option value="les">Lower East Side / East Village</option>
                     <option value="fidi">Financial District</option>
                 </select>
             </div>
@@ -278,28 +303,46 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
+    // Added 'available' unit counts to all properties
     const DATA = {
+        washington_heights: [
+            { name: "The Radio Tower", addr: "2420 Amsterdam Ave", rent: 1900, market: 3100, lat: 40.8480, lng: -73.9280, available: 5 }
+        ],
+        harlem: [
+            { name: "The Victoria", addr: "233 W 125th St", rent: 2200, market: 3500, lat: 40.8095, lng: -73.9490, available: 12 },
+            { name: "One45", addr: "145 W 125th St", rent: 2100, market: 3400, lat: 40.8080, lng: -73.9460, available: 8 }
+        ],
         uws: [
-            { name: "The Aire", addr: "200 W 67th St", rent: 3250, market: 5400, lat: 40.7748, lng: -73.9825 },
-            { name: "Hawthorn Park", addr: "160 W 62nd St", rent: 3100, market: 5200, lat: 40.7712, lng: -73.9835 },
-            { name: "One Columbus", addr: "1 Columbus Pl", rent: 2850, market: 4600, lat: 40.7690, lng: -73.9870 }
+            { name: "The Aire", addr: "200 W 67th St", rent: 3250, market: 5400, lat: 40.7748, lng: -73.9825, available: 14 },
+            { name: "Hawthorn Park", addr: "160 W 62nd St", rent: 3100, market: 5200, lat: 40.7712, lng: -73.9835, available: 8 },
+            { name: "One Columbus", addr: "1 Columbus Pl", rent: 2850, market: 4600, lat: 40.7690, lng: -73.9870, available: 5 }
         ],
         ues: [
-            { name: "85 East End", addr: "85 East End Ave", rent: 2700, market: 4200, lat: 40.7745, lng: -73.9435 },
-            { name: "The Colorado", addr: "201 E 86th St", rent: 2950, market: 4800, lat: 40.7785, lng: -73.9525 }
-        ],
-        chelsea: [
-            { name: "The Lyra", addr: "555 W 38th St", rent: 2600, market: 4300, lat: 40.7585, lng: -73.9985 },
-            { name: "The Eugene", addr: "435 W 31st St", rent: 3300, market: 5100, lat: 40.7530, lng: -73.9995 },
-            { name: "Abington House", addr: "500 W 30th St", rent: 2900, market: 4800, lat: 40.7520, lng: -74.0040 }
+            { name: "85 East End", addr: "85 East End Ave", rent: 2700, market: 4200, lat: 40.7745, lng: -73.9435, available: 3 },
+            { name: "The Colorado", addr: "201 E 86th St", rent: 2950, market: 4800, lat: 40.7785, lng: -73.9525, available: 6 }
         ],
         midtown: [
-            { name: "Via 57 West", addr: "625 W 57th St", rent: 3100, market: 5800, lat: 40.7715, lng: -73.9935 },
-            { name: "The Max", addr: "606 W 57th St", rent: 2850, market: 5100, lat: 40.7705, lng: -73.9925 }
+            { name: "Via 57 West", addr: "625 W 57th St", rent: 3100, market: 5800, lat: 40.7715, lng: -73.9935, available: 15 },
+            { name: "The Max", addr: "606 W 57th St", rent: 2850, market: 5100, lat: 40.7705, lng: -73.9925, available: 20 }
+        ],
+        chelsea: [
+            { name: "The Lyra", addr: "555 W 38th St", rent: 2600, market: 4300, lat: 40.7585, lng: -73.9985, available: 21 },
+            { name: "The Eugene", addr: "435 W 31st St", rent: 3300, market: 5100, lat: 40.7530, lng: -73.9995, available: 18 },
+            { name: "Abington House", addr: "500 W 30th St", rent: 2900, market: 4800, lat: 40.7520, lng: -74.0040, available: 11 }
+        ],
+        gramercy: [
+            { name: "Prism at Park Ave South", addr: "50 E 28th St", rent: 2750, market: 4900, lat: 40.7435, lng: -73.9840, available: 9 }
+        ],
+        village: [
+            { name: "100 Barrow", addr: "100 Barrow St", rent: 3200, market: 6000, lat: 40.7320, lng: -74.0060, available: 3 }
+        ],
+        les: [
+            { name: "Essex Crossing", addr: "115 Delancey St", rent: 2400, market: 4200, lat: 40.7180, lng: -73.9880, available: 18 },
+            { name: "One Manhattan Sq", addr: "252 South St", rent: 2600, market: 4800, lat: 40.7100, lng: -73.9900, available: 22 }
         ],
         fidi: [
-            { name: "20 Exchange Pl", addr: "20 Exchange Pl", rent: 3050, market: 4700, lat: 40.7055, lng: -74.0095 },
-            { name: "70 Pine St", addr: "70 Pine Street", rent: 3200, market: 5300, lat: 40.7065, lng: -74.0080 }
+            { name: "20 Exchange Pl", addr: "20 Exchange Pl", rent: 3050, market: 4700, lat: 40.7055, lng: -74.0095, available: 34 },
+            { name: "70 Pine St", addr: "70 Pine Street", rent: 3200, market: 5300, lat: 40.7065, lng: -74.0080, available: 19 }
         ]
     };
 
@@ -310,7 +353,6 @@
     function calculatePersonalYield(rent, market) {
         const monthlySaving = market - rent;
         const annualSaving = monthlySaving * 12;
-        // How many "free months" of rent are the savings equivalent to?
         const monthsFreeEquivalent = (annualSaving / rent).toFixed(1);
         return { annualSaving, monthlySaving, monthsFreeEquivalent };
     }
@@ -320,6 +362,7 @@
         const feed = document.getElementById('listing-feed');
         const avgDisplay = document.getElementById('avg-savings-val');
         const scoreDisplay = document.getElementById('yield-score');
+        const unitsDisplay = document.getElementById('total-units-val');
         const resultCount = document.getElementById('result-count');
         
         let buildings = [];
@@ -335,11 +378,13 @@
 
         let totalSavings = 0;
         let totalScore = 0;
+        let totalAvailableUnits = 0;
 
         buildings.forEach(b => {
-            const yield = calculatePersonalYield(b.rent, b.market);
-            totalSavings += yield.annualSaving;
-            totalScore += parseFloat(yield.monthsFreeEquivalent);
+            const yieldData = calculatePersonalYield(b.rent, b.market);
+            totalSavings += yieldData.annualSaving;
+            totalScore += parseFloat(yieldData.monthsFreeEquivalent);
+            totalAvailableUnits += b.available;
 
             // Add Marker
             const icon = L.divIcon({
@@ -352,9 +397,16 @@
                 <div class="popup-header">${b.name}</div>
                 <div class="popup-body">
                     <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">${b.addr}</div>
+                    <div style="margin-bottom: 10px;">
+                        <span style="font-weight: 700; color: #fff; font-size: 13px;">${b.available} Units Available</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #30363d; padding-top: 8px; margin-bottom: 4px;">
+                        <span style="font-size: 10px; color: var(--text-muted);">Market Value:</span>
+                        <span style="font-size: 10px; color: var(--text-muted); text-decoration: line-through;">$${b.market.toLocaleString()}</span>
+                    </div>
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <span style="font-weight: 700; color: var(--accent);">$${b.rent.toLocaleString()}</span>
-                        <span style="font-size: 10px; color: var(--savings-blue);">Save $${yield.monthlySaving.toLocaleString()}/mo</span>
+                        <span style="font-size: 10px; color: var(--savings-blue);">Save $${yieldData.monthlySaving.toLocaleString()}/mo</span>
                     </div>
                 </div>
             `);
@@ -362,15 +414,21 @@
             // Add Card
             const card = document.createElement('div');
             card.className = 'property-card';
-            const savePct = (yield.monthlySaving / b.market * 100).toFixed(0);
+            const savePct = (yieldData.monthlySaving / b.market * 100).toFixed(0);
             
             card.innerHTML = `
                 <div class="rent-row">
                     <div>
                         <div style="font-weight: 700; font-size: 15px; color: #fff;">${b.name}</div>
                         <div style="font-size: 11px; color: var(--text-muted);">${b.addr}</div>
+                        <div class="unit-badge">
+                            <i class="fa-solid fa-door-open"></i> ${b.available} Available Units
+                        </div>
                     </div>
-                    <div class="rent-tag">$${b.rent.toLocaleString()}</div>
+                    <div style="text-align: right;">
+                        <div class="rent-tag">$${b.rent.toLocaleString()}</div>
+                        <div style="font-size: 10px; color: var(--text-muted); margin-top: 4px;">Market: <span style="text-decoration: line-through;">$${b.market.toLocaleString()}</span></div>
+                    </div>
                 </div>
                 <div class="comparison-bar">
                     <div class="comparison-fill" style="width: ${savePct}%"></div>
@@ -378,16 +436,15 @@
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <div class="saving-badge">
                         <i class="fa-solid fa-piggy-bank"></i>
-                        $${yield.annualSaving.toLocaleString()} saved / year
+                        $${yieldData.annualSaving.toLocaleString()} saved / year
                     </div>
                     <div style="font-size: 10px; color: var(--yield-gold); font-weight: 700;">
-                        ${yield.monthsFreeEquivalent} MONTHS FREE EQ.
+                        ${yieldData.monthsFreeEquivalent} MONTHS FREE EQ.
                     </div>
                 </div>
             `;
             card.onclick = () => {
                 map.flyTo([b.lat, b.lng], 16);
-                // Simple popup trigger simulated
             };
             feed.appendChild(card);
         });
@@ -399,9 +456,14 @@
             
             avgDisplay.innerText = `$${avgPersonal.toLocaleString()} /yr`;
             scoreDisplay.innerText = avgScore;
+            unitsDisplay.innerText = totalAvailableUnits;
 
             const group = new L.featureGroup(markers.getLayers());
             map.fitBounds(group.getBounds().pad(0.2));
+        } else {
+            avgDisplay.innerText = `$0 /yr`;
+            scoreDisplay.innerText = '0.0';
+            unitsDisplay.innerText = '0';
         }
     }
 
