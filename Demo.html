@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manhattan Affordable Finder</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        :root {
+            --bg-deep: #06090f;
+            --bg-panel: #0d1117;
+            --accent: #bef264; 
+            --text-main: #f8fafc;
+            --text-muted: #8b949e;
+            --border: #30363d;
+            --savings-blue: #38bdf8;
+            --yield-gold: #fbbf24;
+        }
+
+        * { box-sizing: border-box; }
+        body { 
+            background-color: #000; 
+            margin: 0; 
+            padding: 10px; 
+            font-family: 'Poppins', sans-serif;
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        .dashboard {
+            width: 100%;
+            max-width: 1400px;
+            height: 95vh;
+            background: var(--bg-deep);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 40px 80px -20px rgba(0, 0, 0, 0.8);
+        }
+
+        .header {
+            padding: 16px 30px;
+            background: #161b22;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1001;
+        }
+
+        .brand { 
+            font-size: 18px; 
+            font-weight: 700; 
+            color: var(--accent); 
+            display: flex; 
+            align-items: center; 
+            gap: 12px;
+            letter-spacing: -0.5px;
+        }
+
+        .stats-container {
+            display: flex;
+            gap: 40px;
+            align-items: center;
+        }
+
+        .stat-item {
+            text-align: right;
+        }
+
+        .stat-label { 
+            font-size: 9px; 
+            color: var(--text-muted); 
+            text-transform: uppercase; 
+            font-weight: 700; 
+            letter-spacing: 1.5px;
+            margin-bottom: 2px;
+        }
+        .stat-value { 
+            font-family: 'JetBrains Mono'; 
+            font-weight: 700; 
+            color: var(--savings-blue); 
+            font-size: 22px;
+        }
+        .stat-value.gold { color: var(--yield-gold); }
+        .stat-value.white { color: #fff; }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 380px 1fr;
+            flex-grow: 1;
+            min-height: 0;
+        }
+
+        .sidebar {
+            background: var(--bg-panel);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            padding: 24px;
+            overflow-y: auto;
+        }
+
+        .filter-section {
+            margin-bottom: 30px;
+        }
+
+        .sidebar-title {
+            font-size: 11px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            font-weight: 700;
+            margin-bottom: 10px;
+            letter-spacing: 1px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        select {
+            width: 100%; 
+            background: #010409; 
+            border: 1px solid var(--border); 
+            color: #fff; 
+            padding: 14px; 
+            border-radius: 10px; 
+            outline: none;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+        select:hover { border-color: var(--savings-blue); }
+
+        .property-card {
+            background: #161b22;
+            border-radius: 12px;
+            padding: 18px;
+            margin-bottom: 16px;
+            border: 1px solid var(--border);
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+        .property-card:hover { 
+            border-color: var(--accent); 
+            background: #1c2128;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px -10px rgba(0,0,0,0.5);
+        }
+
+        .rent-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+
+        .rent-tag {
+            background: var(--accent);
+            color: #000;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-family: 'JetBrains Mono';
+            font-weight: 700;
+            font-size: 14px;
+        }
+
+        .unit-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 10px;
+            color: var(--accent);
+            background: rgba(190, 242, 100, 0.1);
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin-top: 6px;
+            border: 1px solid rgba(190, 242, 100, 0.2);
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .saving-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: var(--savings-blue);
+            font-weight: 600;
+        }
+
+        .comparison-bar {
+            height: 4px;
+            width: 100%;
+            background: #30363d;
+            border-radius: 2px;
+            margin: 10px 0;
+            position: relative;
+        }
+        .comparison-fill {
+            position: absolute;
+            height: 100%;
+            background: var(--savings-blue);
+            border-radius: 2px;
+        }
+
+        #map { width: 100%; height: 100%; background: #06090f; }
+
+        .custom-marker {
+            width: 24px;
+            height: 24px;
+            background: var(--accent);
+            border: 4px solid #000;
+            border-radius: 50%;
+            box-shadow: 0 0 20px rgba(190, 242, 100, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #000;
+            font-size: 10px;
+            font-weight: 900;
+        }
+
+        .leaflet-popup-content-wrapper { background: #161b22; color: #fff; border-radius: 12px; border: 1px solid var(--border); padding: 0; overflow: hidden; }
+        .leaflet-popup-content { margin: 0; width: 220px !important; }
+        .popup-header { background: var(--accent); color: #000; padding: 10px; font-weight: 700; font-size: 13px; }
+        .popup-body { padding: 12px; }
+
+        .bbl-tag {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            background: rgba(56, 189, 248, 0.1);
+            color: var(--savings-blue);
+            padding: 2px 6px;
+            border-radius: 4px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            margin-bottom: 8px;
+            border: 1px solid rgba(56, 189, 248, 0.2);
+            letter-spacing: 0.5px;
+        }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 10px; }
+        .property-card.selected-card {
+            border-color: var(--accent) !important;
+            background: #1c2128 !important;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px -10px rgba(0,0,0,0.5);
+        }
+    </style>
+</head>
+<body>
+
+<div class="dashboard">
+    <header class="header">
+        <div class="brand">
+            <i class="fa-solid fa-wallet"></i>
+            AFFORDABLE FINDER
+        </div>
+        
+        <div class="stats-container">
+            <div class="stat-item">
+                <div class="stat-label">Properties Matched</div>
+                <div class="stat-value white" id="total-properties-val">0</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">Avg. Market Price</div>
+                <div class="stat-value" id="avg-market-val" style="color: #fff;">$0</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">Avg. Affordable Price</div>
+                <div class="stat-value gold" id="avg-affordable-val">$0</div>
+            </div>
+        </div>
+    </header>
+
+    <div class="main-content">
+       <aside class="sidebar">
+            <div id="api-status" style="padding: 10px; background: rgba(255, 68, 68, 0.1); border: 1px solid #ff4444; border-radius: 8px; margin-bottom: 15px; font-size: 11px; transition: all 0.5s ease;">
+                <div id="api-status-text" style="color: #ff4444; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">
+                    <i class="fa-solid fa-circle-dot"></i> API Connecting...
+                </div>
+            </div>
+
+            <div class="filter-section">
+                <div class="sidebar-title">
+                    <span>Select Neighborhood</span>
+                    <i class="fa-solid fa-location-dot"></i>
+                </div>
+                <select id="hood-filter">
+                    <option value="all">Compare All Manhattan</option>
+                    <option value="Upper East Side">Upper East Side</option>
+                    <option value="Upper West Side">Upper West Side</option>
+                    <option value="Midtown">Midtown</option>
+                    <option value="Chelsea">Chelsea</option>
+                    <option value="Gramercy Park">Gramercy / Murray Hill</option>
+                    <option value="Central Harlem">Central Harlem</option>
+                    <option value="East Harlem">East Harlem</option>
+                    <option value="Washington Heights">Washington Heights / Inwood</option>
+                    <option value="Lower East Side">Lower East Side</option>
+                    <option value="East Village">East Village</option>
+                    <option value="West Village">West Village / SoHo</option>
+                    <option value="Financial District">Financial District</option>
+                    <option value="Other Manhattan">Other Neighborhoods</option>
+                </select>
+                <button id="reset-view" style="width: 100%; margin-top: 10px; background: #161b22; border: 1px dashed var(--border); color: var(--accent); padding: 10px; border-radius: 8px; font-size: 11px; cursor: pointer; font-weight: 700; text-transform: uppercase; transition: all 0.2s;">
+                    <i class="fa-solid fa-earth-americas"></i> Reset to All Manhattan
+                </button>
+            </div>
+
+            <div class="sidebar-title">
+                <span>Top Value Picks</span>
+                <span id="result-count">0</span>
+            </div>
+            <div id="listing-feed"></div>
+        </aside>
+
+        <section id="map-container">
+            <div id="map"></div>
+        </section>
+    </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    let buildings_master = []; 
+
+    async function fetchFromMongoDB() {
+        try {
+            const response = await fetch('http://127.0.0.1:5000/api/buildings'); 
+            buildings_master = await response.json();
+            
+            // 1. SORT GEOGRAPHICALLY (North to South by Latitude)
+            buildings_master.sort((a, b) => b.lat - a.lat);
+            
+            const statusBox = document.getElementById('api-status');
+            const statusText = document.getElementById('api-status-text');
+            statusBox.style.background = "rgba(190, 242, 100, 0.1)";
+            statusBox.style.borderColor = "var(--accent)";
+            statusText.innerHTML = `<i class="fa-solid fa-database"></i> MongoDB Live: ${buildings_master.length} Properties`;              
+            statusText.style.color = "var(--accent)";
+
+            updateDashboard(); 
+        } catch (err) {
+            console.error("Connection failed:", err);
+            document.getElementById('api-status-text').innerText = "API Offline - Check Jupyter";
+        }
+    }
+
+    const map = L.map('map', { zoomControl: false, attributionControl: false }).setView([40.75, -73.98], 13);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
+    const markers = L.layerGroup().addTo(map);
+
+    function calculatePersonalYield(rent, market) {
+        const r = parseFloat(rent) || 0;
+        const m = parseFloat(market) || 0;
+        const monthlySaving = m - r;
+        const annualSaving = monthlySaving * 12;
+        const monthsFreeEquivalent = r > 0 ? (annualSaving / r).toFixed(1) : 0;
+        return { annualSaving, monthlySaving, monthsFreeEquivalent };
+    }
+
+    let activeBuildingId = null;
+
+    // Helper function to smoothly scroll the sidebar
+    function scrollToActiveCard(bbl) {
+        setTimeout(() => {
+            const targetCard = document.getElementById(`card-${bbl}`);
+            if (targetCard) {
+                targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }, 100);
+    }
+
+    function updateDashboard() {
+        const selection = document.getElementById('hood-filter').value;
+        const feed = document.getElementById('listing-feed');
+        const propertiesDisplay = document.getElementById('total-properties-val');
+        const resultCount = document.getElementById('result-count');
+        
+        let buildings = (selection === 'all') ? buildings_master : 
+            buildings_master.filter(b => b.neighborhood && b.neighborhood.toLowerCase() === selection.toLowerCase());
+
+        markers.clearLayers();
+        feed.innerHTML = '';
+        resultCount.innerText = buildings.length;
+
+        let totalMarket = 0;
+        let totalAffordable = 0;
+        let count = 0;
+
+        buildings.forEach(b => {
+            const currentRent = b.stabilizedRent || 0;
+            const marketRent = b.marketRent || 0;
+            const addr = b.street || "Manhattan, NY";
+
+            if (marketRent > 0) {
+                totalMarket += marketRent;
+                totalAffordable += currentRent;
+                count++;
+            }
+
+            const yieldData = calculatePersonalYield(currentRent, marketRent);
+
+            // CREATE MARKER & POPUP
+            if (b.lat && b.lng) {
+                const isHighlighted = b.bbl === activeBuildingId;
+                const icon = L.divIcon({
+                    className: 'custom-div-icon',
+                    html: `<div class="custom-marker" style="${isHighlighted ? 'transform: scale(1.4); border-color: #fff; background: var(--savings-blue);' : ''}">
+                            <i class="fa-solid fa-check"></i>
+                           </div>`,
+                    iconSize: [24, 24]
+                });
+
+                const marker = L.marker([b.lat, b.lng], { icon }).addTo(markers);
+                marker.bbl = b.bbl; 
+                
+                // POPUP: Just the Year Built
+                marker.bindPopup(`
+                    <div class="popup-header">${b.name}</div>
+                    <div class="popup-body">
+                        <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">${addr}</div>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 10px; color: var(--text-muted);">Stabilized:</span>
+                            <span style="font-weight: 700; color: var(--accent);">$${currentRent.toLocaleString()}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
+                            <span style="font-size: 10px; color: var(--text-muted);">Median Market Rate:</span>
+                            <span style="font-size: 11px; color: #ff4444; text-decoration: line-through;">$${marketRent.toLocaleString()}</span>
+                        </div>
+                        <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); font-size: 11px; color: var(--savings-blue); font-weight:700;">
+                            <i class="fa-solid fa-hand-holding-dollar"></i> Save $${yieldData.monthlySaving.toLocaleString()}/mo
+                        </div>
+                        <div style="margin-top: 8px; font-size: 9px; color: #888; text-align: center; border-top: 1px dashed var(--border); padding-top: 6px;">
+                            Built: ${b.yearBuilt || 'N/A'}
+                        </div>
+                    </div>
+                `);
+
+                // SYNC MARKER CLICK
+                marker.on('click', function() {
+                    activeBuildingId = b.bbl; 
+                    const dropdown = document.getElementById('hood-filter');
+                    
+                    if (b.neighborhood && dropdown.value !== b.neighborhood) {
+                        dropdown.value = b.neighborhood;
+                    }
+                    
+                    updateDashboard(); 
+                    map.flyTo([b.lat, b.lng], 17);
+                    scrollToActiveCard(b.bbl);
+                });
+            }
+
+            // CREATE CARD
+            const card = document.createElement('div');
+            card.className = 'property-card';
+            if (b.bbl === activeBuildingId) card.classList.add('selected-card'); 
+            
+            card.id = `card-${b.bbl}`; 
+            
+            const savePct = marketRent > 0 ? (yieldData.monthlySaving / marketRent * 100).toFixed(0) : 0;
+            
+            // CARD: Just the Year Built
+            card.innerHTML = `
+                <div class="bbl-tag"><i class="fa-solid fa-fingerprint"></i> BBL: ${b.bbl || 'N/A'}</div>
+                <div class="rent-row">
+                    <div style="max-width: 65%;">
+                        <div style="font-weight: 700; font-size: 14px; color: #fff;">${b.name}</div>
+                        <div style="font-size: 10px; color: var(--accent); margin-bottom: 2px;">
+                            ${b.neighborhood || 'Manhattan'} • Zip: ${b.zip || 'N/A'}
+                        </div>
+                        <div style="font-size: 10px; color: var(--text-muted);">${addr}</div>
+                        
+                        <div style="font-size: 10px; color: #888; margin-top: 6px;">
+                            <i class="fa-solid fa-calendar"></i> Built: ${b.yearBuilt || 'N/A'}
+                        </div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div class="rent-tag">$${currentRent.toLocaleString()}</div>
+                        <div style="font-size: 11px; color: #888; margin-top: 4px;">
+                            Median Market:<br><span style="text-decoration: line-through;">$${marketRent.toLocaleString()}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="comparison-bar">
+                    <div class="comparison-fill" style="width: ${savePct}%"></div>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div class="saving-badge">$${yieldData.annualSaving.toLocaleString()} SAVED/YR</div>
+                    <div style="font-size: 10px; color: var(--yield-gold); font-weight: 700;">${yieldData.monthsFreeEquivalent} MO FREE</div>
+                </div>
+            `;
+
+            // SYNC CARD CLICK
+            card.onclick = () => { 
+                activeBuildingId = b.bbl;
+                if(b.lat) {
+                    const dropdown = document.getElementById('hood-filter');
+                    if (b.neighborhood && dropdown.value !== b.neighborhood) {
+                        dropdown.value = b.neighborhood;
+                    }
+                    updateDashboard(); 
+                    map.flyTo([b.lat, b.lng], 17);
+                    scrollToActiveCard(b.bbl); 
+                }
+            };
+            feed.appendChild(card);
+        });
+
+        // RE-OPEN ACTIVE POPUP
+        if (activeBuildingId) {
+            markers.eachLayer(m => {
+                if (m.bbl === activeBuildingId) {
+                    m.openPopup();
+                }
+            });
+        }
+
+        // Handle Zooming based on Selection
+        if (count > 0) {
+            document.getElementById('avg-market-val').innerText = `$${Math.round(totalMarket / count).toLocaleString()}`;
+            document.getElementById('avg-affordable-val').innerText = `$${Math.round(totalAffordable / count).toLocaleString()}`;
+            propertiesDisplay.innerText = buildings.length;
+            
+            const group = new L.featureGroup(markers.getLayers());
+            if (selection !== 'all' && !activeBuildingId) {
+                 map.fitBounds(group.getBounds().pad(0.2));
+            } else if (selection === 'all' && !activeBuildingId) {
+                 map.setView([40.75, -73.98], 12);
+            }
+        }
+    }
+
+    document.getElementById('hood-filter').onchange = () => {
+        activeBuildingId = null; 
+        updateDashboard();
+    };
+
+    document.getElementById('reset-view').onclick = () => {
+        activeBuildingId = null;
+        document.getElementById('hood-filter').value = 'all';
+        updateDashboard();
+    };
+    
+    window.onload = fetchFromMongoDB;
+</script>
+</body>
+</html>
